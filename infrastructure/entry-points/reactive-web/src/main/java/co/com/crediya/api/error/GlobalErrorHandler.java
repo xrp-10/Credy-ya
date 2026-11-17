@@ -59,6 +59,7 @@ public class GlobalErrorHandler implements WebExceptionHandler, Ordered {
         return switch (tipo) {
             case INVALID_DATA -> HttpStatus.BAD_REQUEST;
             case ALREADY_EXISTS -> HttpStatus.CONFLICT;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
         };
     }
 

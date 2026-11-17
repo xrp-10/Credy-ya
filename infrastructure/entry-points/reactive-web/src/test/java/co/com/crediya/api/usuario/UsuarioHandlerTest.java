@@ -38,7 +38,7 @@ class UsuarioHandlerTest {
     void setUp() {
         UsuarioHandler handler = new UsuarioHandler(usuarioUseCase);
         GlobalErrorHandler errores = new GlobalErrorHandler(new ErrorResponseWriter(ServerCodecConfigurer.create()));
-        client = WebTestClient.bindToRouterFunction(new RouterRest().routerFunction(handler))
+        client = WebTestClient.bindToRouterFunction(new RouterRest().usuarioRoutes(handler))
                 .handlerStrategies(HandlerStrategies.empty()
                         .codecs(codecs -> codecs.registerDefaults(true))
                         .exceptionHandler(errores).build())

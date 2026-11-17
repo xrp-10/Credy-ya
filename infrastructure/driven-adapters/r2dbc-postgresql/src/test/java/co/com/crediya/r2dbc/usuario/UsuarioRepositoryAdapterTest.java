@@ -90,6 +90,17 @@ class UsuarioRepositoryAdapterTest {
         StepVerifier.create(adapter.existsByDocumentoIdentidad("123")).expectNext(false).verifyComplete();
     }
 
+    @Test
+    void buscaElUsuarioPorDocumento() {
+        UsuarioEntity encontrada = entity.toBuilder().idUsuario(5L).documentoIdentidad("123").build();
+        when(repository.findByDocumentoIdentidad("123")).thenReturn(Mono.just(encontrada));
+        when(mapper.map(encontrada, Usuario.class)).thenReturn(usuario.toBuilder().idUsuario(5L).build());
+
+        StepVerifier.create(adapter.findByDocumentoIdentidad("123"))
+                .expectNextMatches(u -> u.getIdUsuario() == 5L)
+                .verifyComplete();
+    }
+
     private static boolean esError(Throwable e, BusinessErrorType tipo) {
         return e instanceof BusinessException be && be.getType() == tipo;
     }
