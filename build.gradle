@@ -23,5 +23,10 @@ subprojects {
     // Remove once it has been updated in Spring Boot
     ext['jackson-2-bom.version'] = "2.22.4"
     ext['jackson-bom.version'] = "3.2.4"
+
+    // Sin esto, en Windows javac lee los .java como Cp1252 y las tildes de los mensajes salen dañadas.
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
 }
 
