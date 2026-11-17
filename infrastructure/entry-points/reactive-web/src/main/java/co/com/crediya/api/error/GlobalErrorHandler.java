@@ -60,6 +60,8 @@ public class GlobalErrorHandler implements WebExceptionHandler, Ordered {
             case INVALID_DATA -> HttpStatus.BAD_REQUEST;
             case ALREADY_EXISTS -> HttpStatus.CONFLICT;
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
+            case FORBIDDEN -> HttpStatus.FORBIDDEN;
         };
     }
 

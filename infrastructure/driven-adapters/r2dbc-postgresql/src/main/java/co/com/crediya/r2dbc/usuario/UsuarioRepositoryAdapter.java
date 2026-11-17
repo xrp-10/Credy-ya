@@ -51,6 +51,11 @@ public class UsuarioRepositoryAdapter extends ReactiveAdapterOperations<
         return repository.findByDocumentoIdentidad(documentoIdentidad).map(this::toEntity);
     }
 
+    @Override
+    public Mono<Usuario> findByEmail(String email) {
+        return repository.findByEmail(email).map(this::toEntity);
+    }
+
     private static Throwable traducirError(Throwable error) {
         if (error instanceof DuplicateKeyException) {
             return new BusinessException(BusinessErrorType.ALREADY_EXISTS,

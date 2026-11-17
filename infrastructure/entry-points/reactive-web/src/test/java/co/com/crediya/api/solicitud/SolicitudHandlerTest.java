@@ -20,6 +20,7 @@ import org.springframework.web.reactive.function.server.HandlerStrategies;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.security.Principal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +44,8 @@ class SolicitudHandlerTest {
     void setUp() {
         GlobalErrorHandler errores = new GlobalErrorHandler(new ErrorResponseWriter(ServerCodecConfigurer.create()));
         client = WebTestClient.bindToRouterFunction(new RouterRest().solicitudRoutes(new SolicitudHandler(solicitudUseCase)))
+                .webFilter((exchange, chain) -> chain.filter(exchange.mutate()
+                        .principal(Mono.just((Principal) () -> "cliente@crediya.test")).build()))
                 .handlerStrategies(HandlerStrategies.empty()
                         .codecs(codecs -> codecs.registerDefaults(true))
                         .exceptionHandler(errores).build())
@@ -51,7 +54,7 @@ class SolicitudHandlerTest {
 
     @Test
     void registraLaSolicitudYDevuelve201ConEstadoPendiente() {
-        when(solicitudUseCase.registrar(any(), eq("900000001"))).thenAnswer(i -> Mono.just(((Solicitud) i.getArgument(0))
+        when(solicitudUseCase.registrar(any(), eq("900000001"), eq("cliente@crediya.test"))).thenAnswer(i -> Mono.just(((Solicitud) i.getArgument(0))
                 .toBuilder().idSolicitud(10L).email("cliente@crediya.test").idEstado(1).build()));
 
         client.post().uri(RouterRest.SOLICITUD)
@@ -69,7 +72,7 @@ class SolicitudHandlerTest {
                 .jsonPath("$.estado").isEqualTo("Pendiente de revisión");
 
         ArgumentCaptor<Solicitud> enviada = ArgumentCaptor.forClass(Solicitud.class);
-        verify(solicitudUseCase).registrar(enviada.capture(), eq("900000001"));
+        verify(solicitudUseCase).registrar(enviada.capture(), eq("900000001"), eq("cliente@crediya.test"));
         assertThat(enviada.getValue().getMonto()).isEqualByComparingTo(new BigDecimal("5000000"));
         assertThat(enviada.getValue().getPlazo()).isEqualTo(24);
         assertThat(enviada.getValue().getIdTipoPrestamo()).isEqualTo(1L);
@@ -77,7 +80,7 @@ class SolicitudHandlerTest {
 
     @Test
     void erroresDelCasoDeUsoYCuerpoVacioSeRespondenEnJson() {
-        when(solicitudUseCase.registrar(any(), any())).thenReturn(Mono.error(
+        when(solicitudUseCase.registrar(any(), any(), any())).thenReturn(Mono.error(
                 new BusinessException(BusinessErrorType.NOT_FOUND, "No existe un cliente con ese documento de identidad")));
 
         client.post().uri(RouterRest.SOLICITUD).contentType(MediaType.APPLICATION_JSON).bodyValue(CUERPO)
@@ -88,5 +91,21 @@ class SolicitudHandlerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.mensaje").isEqualTo("El cuerpo de la petición es obligatorio");
+    }
+
+    @Test
+    void sinSesionResponde401() {
+        GlobalErrorHandler errores = new GlobalErrorHandler(new ErrorResponseWriter(ServerCodecConfigurer.create()));
+        WebTestClient anonimo = WebTestClient
+                .bindToRouterFunction(new RouterRest().solicitudRoutes(new SolicitudHandler(solicitudUseCase)))
+                .handlerStrategies(HandlerStrategies.empty()
+                        .codecs(codecs -> codecs.registerDefaults(true))
+                        .exceptionHandler(errores).build())
+                .build();
+
+        anonimo.post().uri(RouterRest.SOLICITUD).contentType(MediaType.APPLICATION_JSON).bodyValue(CUERPO)
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody().jsonPath("$.error").isEqualTo("UNAUTHORIZED");
     }
 }

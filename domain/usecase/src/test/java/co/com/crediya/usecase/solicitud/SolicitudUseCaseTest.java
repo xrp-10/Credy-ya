@@ -41,6 +41,7 @@ class SolicitudUseCaseTest {
     private SolicitudUseCase useCase;
 
     private static final String DOCUMENTO = "900000001";
+    private static final String EMAIL = "cliente@crediya.test";
     private final Usuario cliente = Usuario.builder().idUsuario(1L).email("cliente@crediya.test")
             .documentoIdentidad(DOCUMENTO).build();
     private final TipoPrestamo libreInversion = TipoPrestamo.builder().idTipoPrestamo(1L).nombre("Libre inversión")
@@ -68,7 +69,7 @@ class SolicitudUseCaseTest {
         datosExistentes();
         Solicitud entrada = solicitud("5000000").toBuilder().idSolicitud(77L).idEstado(4).email("otro@x.com").build();
 
-        StepVerifier.create(useCase.registrar(entrada, "  " + DOCUMENTO + " "))
+        StepVerifier.create(useCase.registrar(entrada, "  " + DOCUMENTO + " ", EMAIL))
                 .expectNextMatches(s -> s.getIdSolicitud() == 10L
                         && "cliente@crediya.test".equals(s.getEmail())
                         && s.getIdEstado() == EstadoSolicitud.PENDIENTE_REVISION.getId()
@@ -81,8 +82,8 @@ class SolicitudUseCaseTest {
     void aceptaMontosEnLosLimitesDelTipo() {
         datosExistentes();
 
-        StepVerifier.create(useCase.registrar(solicitud("1000000"), DOCUMENTO)).expectNextCount(1).verifyComplete();
-        StepVerifier.create(useCase.registrar(solicitud("50000000"), DOCUMENTO)).expectNextCount(1).verifyComplete();
+        StepVerifier.create(useCase.registrar(solicitud("1000000"), DOCUMENTO, EMAIL)).expectNextCount(1).verifyComplete();
+        StepVerifier.create(useCase.registrar(solicitud("50000000"), DOCUMENTO, EMAIL)).expectNextCount(1).verifyComplete();
     }
 
     @Test
@@ -90,7 +91,7 @@ class SolicitudUseCaseTest {
         datosExistentes();
 
         List.of("999999.99", "50000000.01").forEach(monto ->
-                StepVerifier.create(useCase.registrar(solicitud(monto), DOCUMENTO))
+                StepVerifier.create(useCase.registrar(solicitud(monto), DOCUMENTO, EMAIL))
                         .expectErrorMatches(e -> esError(e, BusinessErrorType.INVALID_DATA)
                                 && e.getMessage().contains("Libre inversión"))
                         .verify());
@@ -100,9 +101,8 @@ class SolicitudUseCaseTest {
     @Test
     void rechazaClienteInexistente() {
         when(usuarioRepository.findByDocumentoIdentidad(DOCUMENTO)).thenReturn(Mono.empty());
-        when(tipoPrestamoRepository.findById(1L)).thenReturn(Mono.just(libreInversion));
 
-        StepVerifier.create(useCase.registrar(solicitud("5000000"), DOCUMENTO))
+        StepVerifier.create(useCase.registrar(solicitud("5000000"), DOCUMENTO, EMAIL))
                 .expectErrorMatches(e -> esError(e, BusinessErrorType.NOT_FOUND))
                 .verify();
         verify(solicitudRepository, never()).save(any());
@@ -113,7 +113,7 @@ class SolicitudUseCaseTest {
         when(usuarioRepository.findByDocumentoIdentidad(DOCUMENTO)).thenReturn(Mono.just(cliente));
         when(tipoPrestamoRepository.findById(99L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(useCase.registrar(solicitud("5000000").toBuilder().idTipoPrestamo(99L).build(), DOCUMENTO))
+        StepVerifier.create(useCase.registrar(solicitud("5000000").toBuilder().idTipoPrestamo(99L).build(), DOCUMENTO, EMAIL))
                 .expectErrorMatches(e -> esError(e, BusinessErrorType.INVALID_DATA)
                         && e.getMessage().contains("no existe"))
                 .verify();
@@ -131,14 +131,14 @@ class SolicitudUseCaseTest {
                 base.toBuilder().plazo(0).build(),
                 base.toBuilder().idTipoPrestamo(null).build());
 
-        invalidas.forEach(s -> StepVerifier.create(useCase.registrar(s, DOCUMENTO))
+        invalidas.forEach(s -> StepVerifier.create(useCase.registrar(s, DOCUMENTO, EMAIL))
                 .expectErrorMatches(e -> esError(e, BusinessErrorType.INVALID_DATA))
                 .verify());
-        StepVerifier.create(useCase.registrar(null, DOCUMENTO))
+        StepVerifier.create(useCase.registrar(null, DOCUMENTO, EMAIL))
                 .expectErrorMatches(e -> esError(e, BusinessErrorType.INVALID_DATA)).verify();
-        StepVerifier.create(useCase.registrar(base, " "))
+        StepVerifier.create(useCase.registrar(base, " ", EMAIL))
                 .expectErrorMatches(e -> esError(e, BusinessErrorType.INVALID_DATA)).verify();
-        StepVerifier.create(useCase.registrar(base, null))
+        StepVerifier.create(useCase.registrar(base, null, EMAIL))
                 .expectErrorMatches(e -> esError(e, BusinessErrorType.INVALID_DATA)).verify();
         verify(usuarioRepository, never()).findByDocumentoIdentidad(any());
         verify(solicitudRepository, never()).save(any());
@@ -148,12 +148,35 @@ class SolicitudUseCaseTest {
     void aceptaPlazoDeUnMes() {
         datosExistentes();
 
-        StepVerifier.create(useCase.registrar(solicitud("5000000").toBuilder().plazo(1).build(), DOCUMENTO))
+        StepVerifier.create(useCase.registrar(solicitud("5000000").toBuilder().plazo(1).build(), DOCUMENTO, EMAIL))
                 .expectNextCount(1)
                 .verifyComplete();
     }
 
     private static boolean esError(Throwable e, BusinessErrorType tipo) {
         return e instanceof BusinessException be && be.getType() == tipo;
+    }
+
+    @Test
+    void unClienteNoPuedeCrearSolicitudesAOtroNombre() {
+        when(usuarioRepository.findByDocumentoIdentidad(DOCUMENTO)).thenReturn(Mono.just(cliente));
+
+        StepVerifier.create(useCase.registrar(solicitud("5000000"), DOCUMENTO, "intruso@crediya.test"))
+                .expectErrorMatches(e -> esError(e, BusinessErrorType.FORBIDDEN))
+                .verify();
+        StepVerifier.create(useCase.registrar(solicitud("5000000"), DOCUMENTO, null))
+                .expectErrorMatches(e -> esError(e, BusinessErrorType.FORBIDDEN))
+                .verify();
+        verify(tipoPrestamoRepository, never()).findById(any());
+        verify(solicitudRepository, never()).save(any());
+    }
+
+    @Test
+    void reconoceAlMismoClienteSinImportarMayusculasNiEspacios() {
+        datosExistentes();
+
+        StepVerifier.create(useCase.registrar(solicitud("5000000"), DOCUMENTO, " Cliente@CrediYa.test "))
+                .expectNextCount(1)
+                .verifyComplete();
     }
 }

@@ -28,6 +28,8 @@ class GlobalErrorHandlerTest {
     private final RouterFunction<ServerResponse> rutas = RouterFunctions
             .route(GET("/negocio"), r -> Mono.error(new BusinessException(BusinessErrorType.INVALID_DATA, "dato malo")))
             .andRoute(GET("/no-encontrado"), r -> Mono.error(new BusinessException(BusinessErrorType.NOT_FOUND, "no está")))
+            .andRoute(GET("/sin-sesion"), r -> Mono.error(new BusinessException(BusinessErrorType.UNAUTHORIZED, "sin sesión")))
+            .andRoute(GET("/prohibido"), r -> Mono.error(new BusinessException(BusinessErrorType.FORBIDDEN, "no puedes")))
             .andRoute(GET("/duplicado"), r -> Mono.error(new BusinessException(BusinessErrorType.ALREADY_EXISTS, "ya existe")))
             .andRoute(GET("/rechazado"), r -> Mono.error(new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED)))
             .andRoute(GET("/tipo"), r -> Mono.error(new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE)))
@@ -52,6 +54,12 @@ class GlobalErrorHandlerTest {
         client.get().uri("/duplicado").exchange()
                 .expectStatus().isEqualTo(HttpStatus.CONFLICT)
                 .expectBody().jsonPath("$.error").isEqualTo("ALREADY_EXISTS");
+        client.get().uri("/sin-sesion").exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody().jsonPath("$.error").isEqualTo("UNAUTHORIZED");
+        client.get().uri("/prohibido").exchange()
+                .expectStatus().isForbidden()
+                .expectBody().jsonPath("$.error").isEqualTo("FORBIDDEN");
         client.get().uri("/no-encontrado").exchange()
                 .expectStatus().isNotFound()
                 .expectBody().jsonPath("$.error").isEqualTo("NOT_FOUND");
