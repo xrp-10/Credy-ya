@@ -37,6 +37,7 @@ public class SecurityConfig {
     static final String ADMIN = "ADMIN";
     static final String ASESOR = "ASESOR";
     static final String CLIENTE = "CLIENTE";
+    static final String[] DOCUMENTACION = {"/", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**"};
 
     private final ErrorResponseWriter errorWriter;
 
@@ -52,6 +53,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         .pathMatchers(HttpMethod.POST, RouterRest.LOGIN).permitAll()
                         .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .pathMatchers(HttpMethod.GET, DOCUMENTACION).permitAll()
                         .pathMatchers(HttpMethod.POST, RouterRest.USUARIOS).hasAnyRole(ADMIN, ASESOR)
                         .pathMatchers(HttpMethod.POST, RouterRest.SOLICITUD).hasRole(CLIENTE)
                         .pathMatchers(HttpMethod.GET, RouterRest.SOLICITUD).hasRole(ASESOR)
