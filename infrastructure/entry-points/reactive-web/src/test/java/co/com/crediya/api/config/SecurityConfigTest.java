@@ -4,10 +4,13 @@ import co.com.crediya.api.RouterRest;
 import co.com.crediya.api.auth.AuthHandler;
 import co.com.crediya.api.error.ErrorResponseWriter;
 import co.com.crediya.api.error.GlobalErrorHandler;
+import co.com.crediya.api.revision.RevisionHandler;
 import co.com.crediya.api.solicitud.SolicitudHandler;
 import co.com.crediya.api.usuario.UsuarioHandler;
+import co.com.crediya.model.pagina.Pagina;
 import co.com.crediya.model.solicitud.Solicitud;
 import co.com.crediya.model.usuario.Usuario;
+import co.com.crediya.usecase.listarsolicitudes.ListarSolicitudesUseCase;
 import co.com.crediya.usecase.login.LoginUseCase;
 import co.com.crediya.usecase.solicitud.SolicitudUseCase;
 import co.com.crediya.usecase.usuario.UsuarioUseCase;
@@ -103,6 +106,18 @@ class SecurityConfigTest {
     }
 
     @Test
+    void soloElAsesorVeElListadoDeRevision() {
+        client.get().uri(RouterRest.SOLICITUD).header(HttpHeaders.AUTHORIZATION, "Bearer " + token("ASESOR"))
+                .exchange()
+                .expectStatus().isOk();
+        List.of("ADMIN", "CLIENTE").forEach(rol -> client.get().uri(RouterRest.SOLICITUD)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(rol))
+                .exchange()
+                .expectStatus().isForbidden());
+        client.get().uri(RouterRest.SOLICITUD).exchange().expectStatus().isUnauthorized();
+    }
+
+    @Test
     void laSaludDeLaAppEsPublicaYLoDemasPideSesion() {
         client.get().uri("/actuator/health").exchange().expectStatus().isNotFound();
         client.get().uri("/api/v1/otra-cosa").exchange().expectStatus().isUnauthorized();
@@ -152,6 +167,13 @@ class SecurityConfigTest {
             when(useCase.registrar(any(), any(), any()))
                     .thenReturn(Mono.just(Solicitud.builder().idSolicitud(1L).idEstado(1).build()));
             return new SolicitudHandler(useCase);
+        }
+
+        @Bean
+        RevisionHandler revisionHandler() {
+            ListarSolicitudesUseCase useCase = mock(ListarSolicitudesUseCase.class);
+            when(useCase.listar(any(), any(), any(), any(), any())).thenReturn(Mono.just(Pagina.de(List.of(), 0, 10, 0)));
+            return new RevisionHandler(useCase);
         }
 
         @Bean

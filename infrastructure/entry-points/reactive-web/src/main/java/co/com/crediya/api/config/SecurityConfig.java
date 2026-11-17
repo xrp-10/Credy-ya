@@ -54,6 +54,7 @@ public class SecurityConfig {
                         .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .pathMatchers(HttpMethod.POST, RouterRest.USUARIOS).hasAnyRole(ADMIN, ASESOR)
                         .pathMatchers(HttpMethod.POST, RouterRest.SOLICITUD).hasRole(CLIENTE)
+                        .pathMatchers(HttpMethod.GET, RouterRest.SOLICITUD).hasRole(ASESOR)
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtDecoder(jwtDecoder).jwtAuthenticationConverter(rolesDelToken()))

@@ -1,6 +1,7 @@
 package co.com.crediya.api;
 
 import co.com.crediya.api.auth.AuthHandler;
+import co.com.crediya.api.revision.RevisionHandler;
 import co.com.crediya.api.solicitud.SolicitudHandler;
 import co.com.crediya.api.usuario.UsuarioHandler;
 import org.springframework.context.annotation.Bean;
@@ -8,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import static org.springframework.web.reactive.function.server.RequestPredicates.GET;
 import static org.springframework.web.reactive.function.server.RequestPredicates.POST;
 import static org.springframework.web.reactive.function.server.RouterFunctions.route;
 
@@ -31,5 +33,10 @@ public class RouterRest {
     @Bean
     public RouterFunction<ServerResponse> authRoutes(AuthHandler handler) {
         return route(POST(LOGIN), handler::login);
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> revisionRoutes(RevisionHandler handler) {
+        return route(GET(SOLICITUD), handler::listar);
     }
 }
