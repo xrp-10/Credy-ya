@@ -1,5 +1,6 @@
 package co.com.crediya.api;
 
+import co.com.crediya.api.solicitud.SolicitudHandler;
 import co.com.crediya.api.usuario.UsuarioHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,9 +14,15 @@ import static org.springframework.web.reactive.function.server.RouterFunctions.r
 public class RouterRest {
 
     public static final String USUARIOS = "/api/v1/usuarios";
+    public static final String SOLICITUD = "/api/v1/solicitud";
 
     @Bean
-    public RouterFunction<ServerResponse> routerFunction(UsuarioHandler usuarioHandler) {
-        return route(POST(USUARIOS), usuarioHandler::registrar);
+    public RouterFunction<ServerResponse> usuarioRoutes(UsuarioHandler handler) {
+        return route(POST(USUARIOS), handler::registrar);
+    }
+
+    @Bean
+    public RouterFunction<ServerResponse> solicitudRoutes(SolicitudHandler handler) {
+        return route(POST(SOLICITUD), handler::registrar);
     }
 }
