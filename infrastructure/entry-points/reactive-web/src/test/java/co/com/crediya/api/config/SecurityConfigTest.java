@@ -121,6 +121,9 @@ class SecurityConfigTest {
     void laSaludDeLaAppEsPublicaYLoDemasPideSesion() {
         client.get().uri("/actuator/health").exchange().expectStatus().isNotFound();
         client.get().uri("/api/v1/otra-cosa").exchange().expectStatus().isUnauthorized();
+        for (String documentacion : List.of("/v3/api-docs", "/webjars/swagger-ui/index.html", "/swagger-ui.html")) {
+            client.get().uri(documentacion).exchange().expectStatus().isNotFound();
+        }
     }
 
     private static WebTestClient.ResponseSpec post(String ruta, String cuerpo, String rol) {

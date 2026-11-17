@@ -2,21 +2,22 @@ package co.com.crediya.api.usuario;
 
 import co.com.crediya.model.usuario.Usuario;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record UsuarioRequest(
-        @JsonProperty("nombres") String nombres,
-        @JsonProperty("apellidos") String apellidos,
-        @JsonProperty("fecha_nacimiento") LocalDate fechaNacimiento,
-        @JsonProperty("direccion") String direccion,
-        @JsonProperty("telefono") String telefono,
-        @JsonProperty("correo_electronico") String correoElectronico,
-        @JsonProperty("salario_base") BigDecimal salarioBase,
-        @JsonProperty("documento_identidad") String documentoIdentidad,
-        @JsonProperty("clave") String clave,
-        @JsonProperty("id_rol") Integer idRol) {
+        @Schema(example = "Ana María", requiredMode = Schema.RequiredMode.REQUIRED) @JsonProperty("nombres") String nombres,
+        @Schema(example = "Pérez Gómez", requiredMode = Schema.RequiredMode.REQUIRED) @JsonProperty("apellidos") String apellidos,
+        @Schema(example = "1995-04-10") @JsonProperty("fecha_nacimiento") LocalDate fechaNacimiento,
+        @Schema(example = "Calle 10 # 5-20") @JsonProperty("direccion") String direccion,
+        @Schema(example = "3001234567") @JsonProperty("telefono") String telefono,
+        @Schema(example = "ana.perez@correo.com", requiredMode = Schema.RequiredMode.REQUIRED) @JsonProperty("correo_electronico") String correoElectronico,
+        @Schema(example = "2500000", requiredMode = Schema.RequiredMode.REQUIRED) @JsonProperty("salario_base") BigDecimal salarioBase,
+        @Schema(example = "1020304050", requiredMode = Schema.RequiredMode.REQUIRED) @JsonProperty("documento_identidad") String documentoIdentidad,
+        @Schema(example = "ClaveSegura1", requiredMode = Schema.RequiredMode.REQUIRED) @JsonProperty("clave") String clave,
+        @Schema(example = "3") @JsonProperty("id_rol") Integer idRol) {
 
     public Usuario toDomain() {
         return Usuario.builder()

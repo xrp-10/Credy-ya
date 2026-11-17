@@ -15,6 +15,18 @@ class ConfigTest {
             .build();
 
     @Test
+    void laDocumentacionPermiteImagenesDataYElRestoNo() {
+        WebTestClient docs = WebTestClient
+                .bindToRouterFunction(RouterFunctions.route(GET("/webjars/swagger-ui/index.html"), r -> ServerResponse.ok().build()))
+                .webFilter(new SecurityHeadersConfig())
+                .build();
+        docs.get().uri("/webjars/swagger-ui/index.html").exchange()
+                .expectHeader().valueEquals("Content-Security-Policy", SecurityHeadersConfig.CSP_DOCUMENTACION);
+        client.get().uri("/prueba").exchange()
+                .expectHeader().valueEquals("Content-Security-Policy", SecurityHeadersConfig.CSP);
+    }
+
+    @Test
     void agregaLasCabecerasDeSeguridad() {
         client.get().uri("/prueba")
                 .exchange()
