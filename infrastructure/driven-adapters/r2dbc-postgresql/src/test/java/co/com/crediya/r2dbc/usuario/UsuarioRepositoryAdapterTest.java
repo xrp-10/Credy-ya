@@ -101,6 +101,17 @@ class UsuarioRepositoryAdapterTest {
                 .verifyComplete();
     }
 
+    @Test
+    void buscaElUsuarioPorCorreo() {
+        UsuarioEntity encontrada = entity.toBuilder().idUsuario(6L).build();
+        when(repository.findByEmail("ana@correo.com")).thenReturn(Mono.just(encontrada));
+        when(mapper.map(encontrada, Usuario.class)).thenReturn(usuario.toBuilder().idUsuario(6L).build());
+
+        StepVerifier.create(adapter.findByEmail("ana@correo.com"))
+                .expectNextMatches(u -> u.getIdUsuario() == 6L)
+                .verifyComplete();
+    }
+
     private static boolean esError(Throwable e, BusinessErrorType tipo) {
         return e instanceof BusinessException be && be.getType() == tipo;
     }

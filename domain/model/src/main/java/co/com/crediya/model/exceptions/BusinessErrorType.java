@@ -3,5 +3,7 @@ package co.com.crediya.model.exceptions;
 public enum BusinessErrorType {
     INVALID_DATA,
     ALREADY_EXISTS,
-    NOT_FOUND
+    NOT_FOUND,
+    UNAUTHORIZED,
+    FORBIDDEN
 }
