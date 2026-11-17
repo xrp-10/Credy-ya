@@ -1,10 +1,59 @@
+# CrediYa
+
+API reactiva para solicitudes de pr√©stamo, hecha con Spring WebFlux, R2DBC y PostgreSQL sobre arquitectura hexagonal (scaffold Clean Architecture de Bancolombia). Implementa las historias de usuario 1 a 4 del bootcamp.
+
+## C√≥mo correrla en local
+
+1. Crear la base en PostgreSQL: `CREATE DATABASE crediya;`. Al arrancar, la app crea las tablas y los cat√°logos con `schema.sql` y `data.sql` (no duplica nada si ya existen).
+2. Configurar las variables de entorno:
+
+| Variable | Por defecto | Para qu√© |
+|---|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME` | `localhost`, `5432`, `crediya` | Conexi√≥n a PostgreSQL |
+| `DB_USERNAME`, `DB_PASSWORD` | `postgres`, vac√≠o | Usuario de la base |
+| `JWT_SECRET` | llave temporal | Firma de los tokens, m√≠nimo 32 caracteres. Sin ella, los tokens dejan de servir al reiniciar |
+| `JWT_EXPIRATION_MINUTES` | `60` | Minutos de vigencia del token |
+
+3. Arrancar: `./gradlew :app-service:bootRun`. La API queda en `http://localhost:8080`.
+
+### Primer administrador
+
+Registrar usuarios exige un ADMIN o un ASESOR, as√≠ que el primer administrador se crea directo en la base. La clave queda cifrada con BCrypt:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+INSERT INTO usuario (nombre, apellido, email, documento_identidad, salario_base, id_rol, contrasena)
+VALUES ('Nombre', 'Apellido', 'admin@tu-correo.com', 'DOCUMENTO', 0, 1, crypt('TU-CLAVE', gen_salt('bf', 10)));
+```
+
+## Endpoints
+
+| M√©todo y ruta | HU | Qui√©n puede | Qu√© hace |
+|---|---|---|---|
+| `POST /api/v1/login` | 3 | Cualquiera | Recibe `correo_electronico` y `clave`; devuelve `{"token", "tipo": "Bearer"}` |
+| `POST /api/v1/usuarios` | 1 | ADMIN, ASESOR | Registra un usuario |
+| `POST /api/v1/solicitud` | 2 | CLIENTE | Registra una solicitud a nombre de quien llama, en "Pendiente de revisi√≥n" |
+| `GET /api/v1/solicitud` | 4 | ASESOR | Lista paginada de solicitudes pendientes, rechazadas y en revisi√≥n manual |
+
+Los endpoints protegidos llevan la cabecera `Authorization: Bearer <token>`. Todo error responde JSON con `estado`, `error` y `mensaje`.
+
+- **Registrar usuario**: `nombres`, `apellidos`, `correo_electronico`, `salario_base` (0 a 15000000), `documento_identidad` y `clave` (8 a 64 caracteres) son obligatorios. Son opcionales `fecha_nacimiento` (AAAA-MM-DD), `direccion`, `telefono` e `id_rol` (1 ADMIN, 2 ASESOR, 3 CLIENTE; por defecto 3).
+- **Registrar solicitud**: `documento_identidad`, `monto`, `plazo` (meses) e `id_tipo_prestamo`. El monto debe estar dentro del rango del tipo de pr√©stamo.
+- **Listar solicitudes**: los par√°metros son opcionales: `estado` (1, 2 o 3), `email`, `tipo_prestamo`, `pagina` (desde 0) y `tamano` (1 a 50, por defecto 10). `deuda_total_mensual_solicitudes_aprobadas` es la suma de las cuotas de las solicitudes aprobadas del cliente: monto √ó i / (1 ‚àí (1 + i)^‚àíplazo), con i = tasa_interes / 100 (tasa mensual).
+
+## Pruebas
+
+`./gradlew test` ejecuta las pruebas unitarias con pitest (mutation testing) y `./gradlew validateStructure` valida las dependencias entre capas.
+
+---
+
 # Proyecto Base Implementando Clean Architecture
 
 ## Antes de Iniciar
 
-Empezaremos por explicar los diferentes componentes del proyectos y partiremos de los componentes externos, continuando con los componentes core de negocio (dominio) y por ˙ltimo el inicio y configuraciÛn de la aplicaciÛn.
+Empezaremos por explicar los diferentes componentes del proyectos y partiremos de los componentes externos, continuando con los componentes core de negocio (dominio) y por √∫ltimo el inicio y configuraci√≥n de la aplicaci√≥n.
 
-Lee el artÌculo [Clean Architecture ó Aislando los detalles](https://medium.com/bancolombia-tech/clean-architecture-aislando-los-detalles-4f9530f35d7a)
+Lee el art√≠culo [Clean Architecture ‚Äî Aislando los detalles](https://medium.com/bancolombia-tech/clean-architecture-aislando-los-detalles-4f9530f35d7a)
 
 # Arquitectura
 
@@ -12,11 +61,11 @@ Lee el artÌculo [Clean Architecture ó Aislando los detalles](https://medium.com/
 
 ## Domain
 
-Es el mÛdulo m·s interno de la arquitectura, pertenece a la capa del dominio y encapsula la lÛgica y reglas del negocio mediante modelos y entidades del dominio.
+Es el m√≥dulo m√°s interno de la arquitectura, pertenece a la capa del dominio y encapsula la l√≥gica y reglas del negocio mediante modelos y entidades del dominio.
 
 ## Usecases
 
-Este mÛdulo gradle perteneciente a la capa del dominio, implementa los casos de uso del sistema, define lÛgica de aplicaciÛn y reacciona a las invocaciones desde el mÛdulo de entry points, orquestando los flujos hacia el mÛdulo de entities.
+Este m√≥dulo gradle perteneciente a la capa del dominio, implementa los casos de uso del sistema, define l√≥gica de aplicaci√≥n y reacciona a las invocaciones desde el m√≥dulo de entry points, orquestando los flujos hacia el m√≥dulo de entities.
 
 ## Infrastructure
 
@@ -24,9 +73,9 @@ Este mÛdulo gradle perteneciente a la capa del dominio, implementa los casos de 
 
 En el apartado de helpers tendremos utilidades generales para los Driven Adapters y Entry Points.
 
-Estas utilidades no est·n arraigadas a objetos concretos, se realiza el uso de generics para modelar comportamientos
-genÈricos de los diferentes objetos de persistencia que puedan existir, este tipo de implementaciones se realizan
-basadas en el patrÛn de diseÒo [Unit of Work y Repository](https://medium.com/@krzychukosobudzki/repository-design-pattern-bc490b256006)
+Estas utilidades no est√°n arraigadas a objetos concretos, se realiza el uso de generics para modelar comportamientos
+gen√©ricos de los diferentes objetos de persistencia que puedan existir, este tipo de implementaciones se realizan
+basadas en el patr√≥n de dise√±o [Unit of Work y Repository](https://medium.com/@krzychukosobudzki/repository-design-pattern-bc490b256006)
 
 Estas clases no puede existir solas y debe heredarse su compartimiento en los **Driven Adapters**
 
@@ -38,10 +87,10 @@ interactuar.
 
 ### Entry Points
 
-Los entry points representan los puntos de entrada de la aplicaciÛn o el inicio de los flujos de negocio.
+Los entry points representan los puntos de entrada de la aplicaci√≥n o el inicio de los flujos de negocio.
 
 ## Application
 
-Este mÛdulo es el m·s externo de la arquitectura, es el encargado de ensamblar los distintos mÛdulos, resolver las dependencias y crear los beans de los casos de use (UseCases) de forma autom·tica, inyectando en Èstos instancias concretas de las dependencias declaradas. Adem·s inicia la aplicaciÛn (es el ˙nico mÛdulo del proyecto donde encontraremos la funciÛn ìpublic static void main(String[] args)î.
+Este m√≥dulo es el m√°s externo de la arquitectura, es el encargado de ensamblar los distintos m√≥dulos, resolver las dependencias y crear los beans de los casos de use (UseCases) de forma autom√°tica, inyectando en √©stos instancias concretas de las dependencias declaradas. Adem√°s inicia la aplicaci√≥n (es el √∫nico m√≥dulo del proyecto donde encontraremos la funci√≥n ‚Äúpublic static void main(String[] args)‚Äù.
 
 **Los beans de los casos de uso se disponibilizan automaticamente gracias a un '@ComponentScan' ubicado en esta capa.**
