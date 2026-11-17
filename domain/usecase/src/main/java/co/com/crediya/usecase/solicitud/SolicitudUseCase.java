@@ -21,11 +21,15 @@ public class SolicitudUseCase {
     private final TipoPrestamoRepository tipoPrestamoRepository;
     private final UsuarioRepository usuarioRepository;
 
-    public Mono<Solicitud> registrar(Solicitud solicitud, String documentoIdentidad) {
+    /**
+     * Registra la solicitud del cliente dueño del documento. Quien la crea (emailSolicitante, tomado del token)
+     * solo puede hacerlo a su propio nombre (HU3).
+     */
+    public Mono<Solicitud> registrar(Solicitud solicitud, String documentoIdentidad, String emailSolicitante) {
         return validar(solicitud, documentoIdentidad)
-                .then(Mono.defer(() -> Mono.zip(
-                        buscarCliente(documentoIdentidad.trim()),
-                        buscarTipoPrestamo(solicitud.getIdTipoPrestamo()))))
+                .then(Mono.defer(() -> buscarCliente(documentoIdentidad.trim())))
+                .flatMap(cliente -> exigirQueSeaElMismo(cliente, emailSolicitante))
+                .zipWhen(cliente -> buscarTipoPrestamo(solicitud.getIdTipoPrestamo()))
                 .flatMap(datos -> validarMonto(solicitud.getMonto(), datos.getT2())
                         .thenReturn(nuevaSolicitud(solicitud, datos.getT1())))
                 .flatMap(solicitudRepository::save);
@@ -54,6 +58,14 @@ public class SolicitudUseCase {
         return usuarioRepository.findByDocumentoIdentidad(documentoIdentidad)
                 .switchIfEmpty(Mono.error(new BusinessException(BusinessErrorType.NOT_FOUND,
                         "No existe un cliente con ese documento de identidad")));
+    }
+
+    private static Mono<Usuario> exigirQueSeaElMismo(Usuario cliente, String emailSolicitante) {
+        if (emailSolicitante == null || !cliente.getEmail().equalsIgnoreCase(emailSolicitante.trim())) {
+            return Mono.error(new BusinessException(BusinessErrorType.FORBIDDEN,
+                    "Solo puedes crear solicitudes de préstamo a tu nombre"));
+        }
+        return Mono.just(cliente);
     }
 
     private Mono<TipoPrestamo> buscarTipoPrestamo(Long idTipoPrestamo) {
