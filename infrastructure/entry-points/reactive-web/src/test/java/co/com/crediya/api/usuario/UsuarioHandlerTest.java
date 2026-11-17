@@ -1,6 +1,8 @@
 package co.com.crediya.api.usuario;
 
 import co.com.crediya.api.RouterRest;
+import co.com.crediya.api.error.ErrorResponseWriter;
+import co.com.crediya.api.error.GlobalErrorHandler;
 import co.com.crediya.model.usuario.Usuario;
 import co.com.crediya.usecase.usuario.UsuarioUseCase;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +12,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerCodecConfigurer;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.server.HandlerStrategies;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
@@ -18,6 +22,7 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +37,12 @@ class UsuarioHandlerTest {
     @BeforeEach
     void setUp() {
         UsuarioHandler handler = new UsuarioHandler(usuarioUseCase);
-        client = WebTestClient.bindToRouterFunction(new RouterRest().routerFunction(handler)).build();
+        GlobalErrorHandler errores = new GlobalErrorHandler(new ErrorResponseWriter(ServerCodecConfigurer.create()));
+        client = WebTestClient.bindToRouterFunction(new RouterRest().routerFunction(handler))
+                .handlerStrategies(HandlerStrategies.empty()
+                        .codecs(codecs -> codecs.registerDefaults(true))
+                        .exceptionHandler(errores).build())
+                .build();
     }
 
     @Test
@@ -71,5 +81,21 @@ class UsuarioHandlerTest {
         assertThat(enviado.getValue().getContrasena()).isEqualTo("ClaveSegura1");
         assertThat(enviado.getValue().getDireccion()).isEqualTo("Calle 10");
         assertThat(enviado.getValue().getTelefono()).isEqualTo("3001234567");
+    }
+
+    @Test
+    void cuerpoVacioOSalarioNoNumericoDevuelven400() {
+        client.post().uri(RouterRest.USUARIOS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.mensaje").isEqualTo("El cuerpo de la petición es obligatorio");
+        client.post().uri(RouterRest.USUARIOS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"nombres\": \"Ana\", \"salario_base\": \"mucho\"}")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.error").isEqualTo("SOLICITUD_INVALIDA");
+        verify(usuarioUseCase, never()).registrar(any());
     }
 }
