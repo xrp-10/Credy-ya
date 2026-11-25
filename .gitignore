@@ -334,3 +334,6 @@ gradle-app.setting
 # -----
 *.hprof
 build-cache
+
+### Docker Compose (HU5): claves locales ###
+.env
