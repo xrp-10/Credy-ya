@@ -1,0 +1,13 @@
+# Lo que no debe entrar al contexto de la imagen (más rápido y sin secretos).
+.git
+.gradle
+.idea
+.vscode
+.claude
+**/build
+build-cache
+**/out
+**/bin
+.env
+.env.*
+*.log

@@ -1,0 +1,55 @@
+# HU5: CrediYa completa (API + PostgreSQL) con un solo comando:
+#   docker compose up -d --build
+# Antes, copiar .env.example a .env y llenar las claves (.env no se sube al repositorio).
+name: crediya
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-crediya}
+      POSTGRES_USER: ${DB_USERNAME:-crediya}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en el archivo .env}
+    volumes:
+      # Volumen con nombre: los datos sobreviven a reiniciar o recrear los contenedores.
+      - crediya-db:/var/lib/postgresql/data
+    ports:
+      # Solo para inspeccionar la base desde la máquina; 5433 para no chocar con un PostgreSQL local en 5432.
+      - "127.0.0.1:${DB_HOST_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - crediya
+
+  api:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile
+    image: crediya-api:local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # La API llega a la base por el nombre del servicio en la red de Compose ("db"), no por localhost.
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-crediya}
+      DB_USERNAME: ${DB_USERNAME:-crediya}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en el archivo .env}
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en el archivo .env (mínimo 32 caracteres)}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-60}
+    ports:
+      - "${API_HOST_PORT:-8080}:8080"
+    restart: unless-stopped
+    networks:
+      - crediya
+
+volumes:
+  crediya-db:
+
+networks:
+  crediya:

@@ -1,6 +1,6 @@
 # CrediYa
 
-API reactiva para solicitudes de préstamo, hecha con Spring WebFlux, R2DBC y PostgreSQL sobre arquitectura hexagonal (scaffold Clean Architecture de Bancolombia). Implementa las historias de usuario 1 a 4 del bootcamp.
+API reactiva para solicitudes de préstamo, hecha con Spring WebFlux, R2DBC y PostgreSQL sobre arquitectura hexagonal (scaffold Clean Architecture de Bancolombia). Implementa las historias de usuario 1 a 5 del bootcamp.
 
 ## Cómo correrla en local
 
@@ -25,6 +25,23 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 INSERT INTO usuario (nombre, apellido, email, documento_identidad, salario_base, id_rol, contrasena)
 VALUES ('Nombre', 'Apellido', 'admin@tu-correo.com', 'DOCUMENTO', 0, 1, crypt('TU-CLAVE', gen_salt('bf', 10)));
 ```
+
+## Con Docker (HU5)
+
+La API y PostgreSQL se levantan juntas con Docker Compose; no hace falta tener Java ni PostgreSQL instalados.
+
+1. Copiar `.env.example` a `.env` y cambiar `DB_PASSWORD` y `JWT_SECRET` (mínimo 32 caracteres). `.env` está en el `.gitignore`.
+2. Levantar todo con un solo comando: `docker compose up -d --build`. La API queda en `http://localhost:8080` y Swagger en `http://localhost:8080/swagger-ui.html`.
+
+| Servicio | Imagen | Puerto en la máquina | Notas |
+|---|---|---|---|
+| `api` | `crediya-api:local`, construida con `deployment/Dockerfile` | `8080` (`API_HOST_PORT`) | Llega a la base por el nombre del servicio (`DB_HOST=db`) dentro de la red `crediya` |
+| `db` | `postgres:17-alpine` | `127.0.0.1:5433` (`DB_HOST_PORT`) | Los datos viven en el volumen `crediya-db` y sobreviven a `docker compose down` y a los reinicios |
+
+- El Dockerfile tiene dos etapas: compila el jar con el Gradle Wrapper (sin correr las pruebas, que se corren aparte con `./gradlew test`) y lo ejecuta en un JRE 17 con un usuario sin privilegios. El contenedor se marca como sano cuando `/actuator/health` responde.
+- La API espera a que la base esté lista (`pg_isready`) antes de arrancar.
+- Primer administrador dentro del contenedor: `docker compose exec db psql -U crediya -d crediya` y la misma consulta de la sección anterior.
+- Ver los logs: `docker compose logs -f api`. Detener: `docker compose down`. Borrar también los datos: `docker compose down -v`.
 
 ## Endpoints
 
